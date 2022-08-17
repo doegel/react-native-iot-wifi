@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Connect to WiFi with React Native on Android and iOS.",
   "main": "index.js",
+  "module": "index.js",
   "types": "index.d.ts",
+  "react-native": "index.js",
   "files": [
     "index.d.ts",
     "index.js",
@@ -11,6 +13,7 @@
     "ios",
     "README.*",
     "package.json",
+    "react-native-iot-wifi.podspec",
     "LICENSE"
   ],
   "repository": {
