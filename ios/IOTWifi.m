@@ -1,4 +1,5 @@
 #import "IOTWifi.h"
+#import <CoreLocation/CoreLocation.h>
 #import <NetworkExtension/NetworkExtension.h>
 #import <SystemConfiguration/CaptiveNetwork.h>
 
@@ -11,6 +12,11 @@
             available = @YES;
         }
         callback(@[available]);
+    }
+
+    RCT_EXPORT_METHOD(requestPermission) {
+        CLLocationManager *locationManager = [[CLLocationManager alloc] init];
+        [locationManager requestWhenInUseAuthorization];
     }
     
     RCT_EXPORT_METHOD(connect:(NSString*)ssid
@@ -77,8 +83,12 @@
                      callback:(RCTResponseSenderBlock)callback) {
         if (@available(iOS 14.0, *)) {
             [NEHotspotNetwork fetchCurrentWithCompletionHandler:^(NEHotspotNetwork * _Nullable currentNetwork) {
-                NSString *ssid = [currentNetwork SSID];
-                callback(@[ssid]);
+                if (currentNetwork == nil) {
+                    callback(@[@"Cannot detect SSID, do you have location permission?"]);
+                } else {
+                    NSString *ssid = [currentNetwork SSID];
+                    callback(@[ssid]);
+                }
             }];
         } else {
             NSString *kSSID = (NSString*) kCNNetworkInfoKeySSID;
@@ -90,11 +100,10 @@
                 if (info && [info count]) {
                     NSString *ssid = [info objectForKey: kSSID];
                     callback(@[ssid]);
-                    return;
+                } else {
+                    callback(@[@"Cannot detect SSID, do you have location permission?"]);
                 }
             }
-
-            callback(@[@"Cannot detect SSID"]);
         }
     }
 @end

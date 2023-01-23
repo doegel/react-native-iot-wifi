@@ -40,16 +40,22 @@ function isApiAvailable(...args) {
   NativeModules.IOTWifi.isApiAvailable(...args);
 }
 
+function requestPermission() {
+  NativeModules.IOTWifi.requestPermission();
+}
+
 module.exports = {
   connect: connect,
   connectSecure: connectSecure,
   getSSID: getSSID,
   isApiAvailable: isApiAvailable,
+  requestPermission: requestPermission,
   removeSSID: removeSSID,
 };
 
 /**
  * (un)bindNetwork only affects Android
+ * requestPermission()
  * isApiAvailable(Callback callback)
  * connect(String ssid, Boolean bindNetwork = false, Callback callback)
  * todo: connectSecure(String ssid, String passphrase, Boolean isWEP, Boolean bindNetwork = false, Callback callback)
