@@ -77,13 +77,21 @@
                      callback:(RCTResponseSenderBlock)callback) {
         NSString *kSSID = (NSString*) kCNNetworkInfoKeySSID;
 
-        NSArray *ifs = (__bridge_transfer id)CNCopySupportedInterfaces();
-        for (NSString *ifnam in ifs) {
-            NSDictionary *info = (__bridge_transfer id)CNCopyCurrentNetworkInfo((__bridge CFStringRef)ifnam);
-            NSString *ssid = info[kSSID];
-            if (ssid) {
+        if (@available(iOS 14.0, *)) {
+            [NEHotspotNetwork fetchCurrentWithCompletionHandler:^(NEHotspotNetwork * _Nullable currentNetwork) {
+                NSString *ssid = [currentNetwork SSID];
                 callback(@[ssid]);
-                return;
+            }];
+        } else {
+            NSArray *ifs = (__bridge_transfer NSArray *)CNCopySupportedInterfaces();
+            NSDictionary *info;
+            for (NSString *ifnam in ifs) {
+                info = (__bridge_transfer NSDictionary *)CNCopyCurrentNetworkInfo((__bridge CFStringRef)ifnam);
+                if (info && [info count]) {
+                    NSString *ssid = [info objectForKey: kSSID];
+                    callback(@[ssid]);
+                    return;
+                }
             }
         }
 
