@@ -13,6 +13,7 @@ declare module 'react-native-iot-wifi' {
     | [string, boolean, (error: string) => void];
 
   export namespace RNWifi {
+    function requestPermission(): void;
     function isApiAvailable(cb: (available: boolean) => void): void;
     function getSSID(cb: (ssid: string) => void): void;
     function connect(...args: ConnectArgs): void;
