@@ -75,14 +75,14 @@
     
     RCT_REMAP_METHOD(getSSID,
                      callback:(RCTResponseSenderBlock)callback) {
-        NSString *kSSID = (NSString*) kCNNetworkInfoKeySSID;
-
         if (@available(iOS 14.0, *)) {
             [NEHotspotNetwork fetchCurrentWithCompletionHandler:^(NEHotspotNetwork * _Nullable currentNetwork) {
                 NSString *ssid = [currentNetwork SSID];
                 callback(@[ssid]);
             }];
         } else {
+            NSString *kSSID = (NSString*) kCNNetworkInfoKeySSID;
+
             NSArray *ifs = (__bridge_transfer NSArray *)CNCopySupportedInterfaces();
             NSDictionary *info;
             for (NSString *ifnam in ifs) {
@@ -93,9 +93,9 @@
                     return;
                 }
             }
-        }
 
-        callback(@[@"Cannot detect SSID"]);
+            callback(@[@"Cannot detect SSID"]);
+        }
     }
 @end
 
