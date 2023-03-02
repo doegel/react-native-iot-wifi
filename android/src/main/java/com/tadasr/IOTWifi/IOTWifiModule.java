@@ -73,7 +73,7 @@ public class IOTWifiModule extends ReactContextBaseJavaModule {
     }
 
     private void connectToWifi(String ssid, String passphrase, Boolean isWEP, Boolean bindNetwork, Callback callback) {
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT > 29 /*Build.VERSION_CODES.Q*/) {
             // TODO new API mentioned in docs https://developer.android.com/reference/android/net/wifi/WifiConfiguration
             callback.invoke("Not supported on Android Q");
             return;
@@ -190,7 +190,7 @@ public class IOTWifiModule extends ReactContextBaseJavaModule {
     }
 
     private void bindProcessToNetwork(final Network network) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= 22 /*Build.VERSION_CODES.M*/) {
             connectivityManager.bindProcessToNetwork(network);
         } else {
             ConnectivityManager.setProcessDefaultNetwork(network);
