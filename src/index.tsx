@@ -17,6 +17,41 @@ const IotWifi = NativeModules.IotWifi
       }
     );
 
-export function multiply(a: number, b: number): Promise<number> {
-  return IotWifi.multiply(a, b);
+export function requestPermission(): void {
+  return IotWifi.requestPermission();
+}
+
+export function hasPermission(): Promise<boolean> {
+  return IotWifi.requestPermission();
+}
+
+export function isApiAvailable(): Promise<boolean> {
+  return IotWifi.isApiAvailable();
+}
+
+export function getSSID(): Promise<string> {
+  return IotWifi.getSSID();
+}
+
+export function connect(
+  ssid: string,
+  rememberNetwork: boolean = false
+): Promise<void> {
+  return IotWifi.connect(ssid, rememberNetwork);
+}
+
+export function connectSecure(
+  ssid: string,
+  passphrase: string,
+  rememberNetwork: boolean = false,
+  isWEP: boolean = false
+): Promise<void> {
+  return IotWifi.connectSecure(ssid, passphrase, rememberNetwork, isWEP);
+}
+
+export function disconnect(
+  ssid: string,
+  forgetNetwork: boolean = false
+): Promise<void> {
+  return IotWifi.removeSSID(ssid, forgetNetwork);
 }

@@ -1,18 +1,23 @@
 import * as React from 'react';
 
 import { StyleSheet, View, Text } from 'react-native';
-import { multiply } from 'react-native-iot-wifi';
+import { isApiAvailable } from 'react-native-iot-wifi';
 
 export default function App() {
-  const [result, setResult] = React.useState<number | undefined>();
+  const [result, setResult] = React.useState<boolean | undefined>();
+
+  const test = async () => {
+    const api = await isApiAvailable();
+    setResult(api);
+  };
 
   React.useEffect(() => {
-    multiply(3, 7).then(setResult);
+    test();
   }, []);
 
   return (
     <View style={styles.container}>
-      <Text>Result: {result}</Text>
+      <Text>Api available?: {result ? 'YES' : 'NO'}</Text>
     </View>
   );
 }
