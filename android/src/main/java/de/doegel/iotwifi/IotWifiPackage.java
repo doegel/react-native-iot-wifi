@@ -1,4 +1,4 @@
-package com.iotwifi;
+package de.doegel.iotwifi;
 
 import androidx.annotation.NonNull;
 

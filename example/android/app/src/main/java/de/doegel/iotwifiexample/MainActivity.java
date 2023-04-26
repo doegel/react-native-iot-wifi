@@ -1,4 +1,4 @@
-package com.iotwifiexample;
+package de.doegel.iotwifiexample;
 
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;

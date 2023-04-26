@@ -72,6 +72,6 @@ if (isNewArchitectureEnabled()) {
   react {
     jsRootDir = file("../src/")
     libraryName = "IotWifi"
-    codegenJavaPackageName = "com.iotwifi"
+    codegenJavaPackageName = "de.doegel.iotwifi"
   }
 }

@@ -93,9 +93,9 @@ android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
-    namespace "com.iotwifiexample"
+    namespace "de.doegel.iotwifiexample"
     defaultConfig {
-        applicationId "com.iotwifiexample"
+        applicationId "de.doegel.iotwifiexample"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
