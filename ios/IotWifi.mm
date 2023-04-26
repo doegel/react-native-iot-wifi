@@ -6,9 +6,14 @@
 @implementation IotWifi
 RCT_EXPORT_MODULE();
 
-RCT_EXPORT_METHOD(requestPermission) {
+RCT_EXPORT_METHOD(requestPermission,
+                  requestPermissionWithResolver:(RCTPromiseResolveBlock)resolve withRejecter:(RCTPromiseRejectBlock)reject)
+{
     CLLocationManager *locationManager = [[CLLocationManager alloc] init];
     [locationManager requestWhenInUseAuthorization];
+
+    // TODO: return state from aquired from delegate
+    resolve(@[[NSNull null]]);
 }
 
 RCT_REMAP_METHOD(hasPermission,
@@ -77,31 +82,6 @@ RCT_REMAP_METHOD(getSSID,
 }
 
 RCT_EXPORT_METHOD(connect:(NSString*)ssid
-                  rememberNetwork:(BOOL)rememberNetwork
-                  withResolver:(RCTPromiseResolveBlock)resolve
-                  withRejecter:(RCTPromiseRejectBlock)reject)
-{
-#if TARGET_OS_SIMULATOR
-    reject(@"not_available", @"Cannot run on a simulator", nil);
-#else
-    if (@available(iOS 11.0, *)) {
-        NEHotspotConfiguration* configuration = [[NEHotspotConfiguration alloc] initWithSSID:ssid];
-        configuration.joinOnce = !rememberNetwork;
-
-        [[NEHotspotConfigurationManager sharedManager] applyConfiguration:configuration completionHandler:^(NSError * _Nullable error) {
-            if (error != nil) {
-                reject(@"not_configured", [error localizedDescription], error);
-            } else {
-                resolve(@[[NSNull null]]);
-            }
-        }];
-    } else {
-        reject(@"not_supported", @"Not supported in iOS<11.0", nil);
-    }
-#endif
-}
-
-RCT_EXPORT_METHOD(connectSecure:(NSString*)ssid
                   withPassphrase:(NSString*)passphrase
                   rememberNetwork:(BOOL)rememberNetwork
                   isWEP:(BOOL)isWEP
@@ -112,7 +92,15 @@ RCT_EXPORT_METHOD(connectSecure:(NSString*)ssid
     reject(@"not_available", @"Cannot run on a simulator", nil);
 #else
     if (@available(iOS 11.0, *)) {
-        NEHotspotConfiguration* configuration = [[NEHotspotConfiguration alloc] initWithSSID:ssid passphrase:passphrase isWEP:isWEP];
+        NEHotspotConfiguration* configuration = nil;
+        if ([passphrase length] == 0) {
+            // Connect without passphrase
+            configuration = [[NEHotspotConfiguration alloc] initWithSSID:ssid];
+        } else {
+            // Connect with credentials
+            configuration = [[NEHotspotConfiguration alloc] initWithSSID:ssid passphrase:passphrase isWEP:isWEP];
+        }
+
         configuration.joinOnce = !rememberNetwork;
 
         [[NEHotspotConfigurationManager sharedManager] applyConfiguration:configuration completionHandler:^(NSError * _Nullable error) {

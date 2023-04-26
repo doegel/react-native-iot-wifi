@@ -17,12 +17,12 @@ const IotWifi = NativeModules.IotWifi
       }
     );
 
-export function requestPermission(): void {
+export function requestPermission(): Promise<boolean | undefined> {
   return IotWifi.requestPermission();
 }
 
 export function hasPermission(): Promise<boolean> {
-  return IotWifi.requestPermission();
+  return IotWifi.hasPermission();
 }
 
 export function isApiAvailable(): Promise<boolean> {
@@ -35,18 +35,11 @@ export function getSSID(): Promise<string> {
 
 export function connect(
   ssid: string,
-  rememberNetwork: boolean = false
-): Promise<void> {
-  return IotWifi.connect(ssid, rememberNetwork);
-}
-
-export function connectSecure(
-  ssid: string,
-  passphrase: string,
+  passphrase: string = '',
   rememberNetwork: boolean = false,
   isWEP: boolean = false
 ): Promise<void> {
-  return IotWifi.connectSecure(ssid, passphrase, rememberNetwork, isWEP);
+  return IotWifi.connect(ssid, passphrase, rememberNetwork, isWEP);
 }
 
 export function disconnect(
