@@ -1,23 +1,31 @@
 import * as React from 'react';
 
 import { StyleSheet, View, Text } from 'react-native';
-import { isApiAvailable } from 'react-native-iot-wifi';
+import { hasPermission, requestPermission } from 'react-native-iot-wifi';
 
 export default function App() {
-  const [result, setResult] = React.useState<boolean | undefined>();
+  const [reqP, setReqP] = React.useState<boolean | undefined>();
+  const [hasP, setHasP] = React.useState<boolean | undefined>();
 
-  const test = async () => {
-    const api = await isApiAvailable();
-    setResult(api);
+  const get = async () => {
+    try {
+      const hasPer = await hasPermission();
+      setHasP(hasPer);
+      const reqPer = await requestPermission();
+      setReqP(reqPer);
+    } catch (err: any) {
+      console.warn(err);
+    }
   };
 
   React.useEffect(() => {
-    test();
+    get();
   }, []);
 
   return (
     <View style={styles.container}>
-      <Text>Api available?: {result ? 'YES' : 'NO'}</Text>
+      <Text>HasPer: {hasP ? 'YES' : 'NO'}</Text>
+      <Text>ReqPer: {reqP ? 'YES' : 'NO'}</Text>
     </View>
   );
 }

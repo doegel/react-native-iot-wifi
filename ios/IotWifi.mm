@@ -1,37 +1,30 @@
 #import "IotWifi.h"
-#import <CoreLocation/CoreLocation.h>
-#import <NetworkExtension/NetworkExtension.h>
-#import <SystemConfiguration/CaptiveNetwork.h>
 
 @implementation IotWifi
 RCT_EXPORT_MODULE();
 
-RCT_EXPORT_METHOD(requestPermission,
-                  requestPermissionWithResolver:(RCTPromiseResolveBlock)resolve withRejecter:(RCTPromiseRejectBlock)reject)
+RCT_REMAP_METHOD(requestPermission,
+                 requestPermissionWithResolver:(RCTPromiseResolveBlock)resolve withRejecter:(RCTPromiseRejectBlock)reject)
 {
-    CLLocationManager *locationManager = [[CLLocationManager alloc] init];
-    [locationManager requestWhenInUseAuthorization];
+    if (![CLLocationManager locationServicesEnabled]) {
+        resolve(@NO);
+    }
+    if ([CLLocationManager authorizationStatus] != kCLAuthorizationStatusNotDetermined) {
+        [self checkWithResolver:resolve rejecter:reject];
+    }
 
-    // TODO: return state from aquired from delegate
-    resolve(@[[NSNull null]]);
+    _resolve = resolve;
+    _reject = reject;
+
+    _locationManager = [CLLocationManager new];
+    [_locationManager setDelegate:self];
+    [_locationManager requestWhenInUseAuthorization];
 }
 
 RCT_REMAP_METHOD(hasPermission,
                  hasPermissionWithResolver:(RCTPromiseResolveBlock)resolve withRejecter:(RCTPromiseRejectBlock)reject)
 {
-    if (@available(iOS 14.0, *)) {
-      CLLocationManager *locationManager = [[CLLocationManager alloc] init];
-      CLAuthorizationStatus status = [locationManager authorizationStatus];
-      if (status == kCLAuthorizationStatusAuthorizedAlways ||
-          status == kCLAuthorizationStatusAuthorizedWhenInUse)
-      {
-        resolve(@(YES));
-      } else {
-        resolve(@(NO));
-      }
-    } else {
-      reject(@"not_supported", @"Not supported in iOS<14.0", nil);
-    }
+    [self checkWithResolver:resolve rejecter:reject];
 }
 
 RCT_REMAP_METHOD(isApiAvailable,
@@ -52,7 +45,7 @@ RCT_REMAP_METHOD(getSSID,
                  getSSIDWithResolver:(RCTPromiseResolveBlock)resolve withRejecter:(RCTPromiseRejectBlock)reject)
 {
 #if TARGET_OS_SIMULATOR
-    reject(@"not_available", @"Cannot run on a simulator", nil);
+    reject(@"not_available", @"Cannot run in a simulator", nil);
 #else
     if (@available(iOS 14.0, *)) {
         [NEHotspotNetwork fetchCurrentWithCompletionHandler:^(NEHotspotNetwork * _Nullable currentNetwork) {
@@ -89,7 +82,7 @@ RCT_EXPORT_METHOD(connect:(NSString*)ssid
                   withRejecter:(RCTPromiseRejectBlock)reject)
 {
 #if TARGET_OS_SIMULATOR
-    reject(@"not_available", @"Cannot run on a simulator", nil);
+    reject(@"not_available", @"Cannot run in a simulator", nil);
 #else
     if (@available(iOS 11.0, *)) {
         NEHotspotConfiguration* configuration = nil;
@@ -122,7 +115,7 @@ RCT_EXPORT_METHOD(disconnect:(NSString*)ssid
                   withRejecter:(RCTPromiseRejectBlock)reject)
 {
 #if TARGET_OS_SIMULATOR
-    reject(@"not_available", @"Cannot run on a simulator", nil);
+    reject(@"not_available", @"Cannot run in a simulator", nil);
 #else
     if (@available(iOS 11.0, *)) {
         [[NEHotspotConfigurationManager sharedManager] getConfiguredSSIDsWithCompletionHandler:^(NSArray<NSString *> *ssids) {
@@ -137,6 +130,30 @@ RCT_EXPORT_METHOD(disconnect:(NSString*)ssid
         reject(@"not_supported", @"Not supported in iOS<11.0", nil);
     }
 #endif
+}
+
+ /** Method called by the delegate with the result of the permission request. */
+- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
+    if (status != kCLAuthorizationStatusNotDetermined) {
+        [_locationManager setDelegate:nil];
+        [self checkWithResolver:_resolve rejecter:_reject];
+    }
+}
+
+- (void)checkWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject {
+    if (![CLLocationManager locationServicesEnabled]) {
+        // Location disabled
+        resolve(@NO);
+    }
+    CLAuthorizationStatus status = [CLLocationManager authorizationStatus];
+    if (status == kCLAuthorizationStatusAuthorizedAlways ||
+        status == kCLAuthorizationStatusAuthorizedWhenInUse)
+    {
+        resolve(@YES);
+    } else {
+        resolve(@NO);
+    }
 }
 
 // Don't compile this code when we build for the old architecture.
