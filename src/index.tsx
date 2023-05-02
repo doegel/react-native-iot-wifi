@@ -33,18 +33,10 @@ export function getSSID(): Promise<string> {
   return IotWifi.getSSID();
 }
 
-export function connect(
-  ssid: string,
-  passphrase: string = '',
-  rememberNetwork: boolean = false,
-  isWEP: boolean = false
-): Promise<void> {
-  return IotWifi.connect(ssid, passphrase, rememberNetwork, isWEP);
+export function connect(ssid: string, passphrase: string = ''): Promise<void> {
+  return IotWifi.connect(ssid, passphrase);
 }
 
-export function disconnect(
-  ssid: string,
-  forgetNetwork: boolean = false
-): Promise<void> {
-  return IotWifi.removeSSID(ssid, forgetNetwork);
+export function disconnect(ssid: string): Promise<void> {
+  return IotWifi.removeSSID(ssid);
 }

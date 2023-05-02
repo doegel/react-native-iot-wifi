@@ -7,9 +7,14 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import android.net.NetworkRequest;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiNetworkSpecifier;
 import android.os.Build;
 import android.os.Process;
 import android.util.Log;
@@ -24,11 +29,14 @@ import com.facebook.react.module.annotations.ReactModule;
 import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
 
+import java.util.List;
+
 @ReactModule(name = IotWifiModule.NAME)
 public class IotWifiModule extends ReactContextBaseJavaModule implements PermissionListener {
   public static final String NAME = "IotWifi";
 
   private int mRequestCode = 0;
+  private ConnectivityManager.NetworkCallback mCallback;
   private final SparseArray<Callback> mCallbacks;
 
   private WifiManager wifiManager;
@@ -38,11 +46,11 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
     super(reactContext);
     mCallbacks = new SparseArray<Callback>();
     wifiManager = (WifiManager) getReactApplicationContext()
-            .getApplicationContext()
-            .getSystemService(Context.WIFI_SERVICE);
+      .getApplicationContext()
+      .getSystemService(Context.WIFI_SERVICE);
     connectivityManager = (ConnectivityManager) getReactApplicationContext()
-            .getApplicationContext()
-            .getSystemService(Context.CONNECTIVITY_SERVICE);
+      .getApplicationContext()
+      .getSystemService(Context.CONNECTIVITY_SERVICE);
   }
 
   @Override
@@ -58,8 +66,8 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
 
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
       promise.resolve(
-          context.checkPermission(permission, Process.myPid(), Process.myUid())
-                  == PackageManager.PERMISSION_GRANTED);
+        context.checkPermission(permission, Process.myPid(), Process.myUid())
+          == PackageManager.PERMISSION_GRANTED);
       return;
     }
 
@@ -72,25 +80,25 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
       PermissionAwareActivity activity = getPermissionAwareActivity();
 
       mCallbacks.put(
-          mRequestCode,
-          new Callback() {
-            @Override
-            public void invoke(Object... args) {
-              int[] results = (int[]) args[0];
-              if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
-                promise.resolve(true);
+        mRequestCode,
+        new Callback() {
+          @Override
+          public void invoke(Object... args) {
+            int[] results = (int[]) args[0];
+            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+              promise.resolve(true);
+            } else {
+              PermissionAwareActivity activity = (PermissionAwareActivity) args[1];
+              if (activity.shouldShowRequestPermissionRationale(permission)) {
+                promise.resolve(false);
               } else {
-                PermissionAwareActivity activity = (PermissionAwareActivity) args[1];
-                if (activity.shouldShowRequestPermissionRationale(permission)) {
-                  promise.resolve(false);
-                } else {
-                  promise.resolve(null);
-                }
+                promise.resolve(null);
               }
             }
-          });
+          }
+        });
 
-      activity.requestPermissions(new String[] {permission}, mRequestCode, this);
+      activity.requestPermissions(new String[]{permission}, mRequestCode, this);
       mRequestCode++;
     } catch (IllegalStateException e) {
       promise.reject("invalid_activity", e);
@@ -104,8 +112,8 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
 
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
       promise.resolve(
-          context.checkPermission(permission, Process.myPid(), Process.myUid())
-              == PackageManager.PERMISSION_GRANTED);
+        context.checkPermission(permission, Process.myPid(), Process.myUid())
+          == PackageManager.PERMISSION_GRANTED);
       return;
     }
 
@@ -122,40 +130,118 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
 
   @ReactMethod
   public void getSSID(Promise promise) {
-      WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-      String ssid = wifiInfo.getSSID();
-
-      if (ssid == null || ssid.equalsIgnoreCase("<unknown ssid>")) {
-          NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
-          if (networkInfo != null && networkInfo.isConnected()) {
-              ssid = networkInfo.getExtraInfo();
-          }
-      }
-
-      if (ssid != null && ssid.startsWith("\"") && ssid.endsWith("\"")) {
-          ssid = ssid.substring(1, ssid.length() - 1);
-      }
-
-      if (ssid != null && !ssid.isEmpty()) {
-          promise.resolve(ssid);
-          return;
-      }
-
+    String ssid = getCurrentSSID();
+    if (ssid != null) {
+      promise.resolve(ssid);
+    } else {
       promise.reject("not_available", "Cannot detect SSID");
+    }
   }
 
   @ReactMethod
   public void connect(
-      String ssid, String passphrase, Boolean rememberNetwork, Boolean isWEP, Promise promise) {
-      new Thread(new Runnable() {
-          public void run() {
-              // TODO implement from here
-              connectToWifi(ssid, passphrase, rememberNetwork, isWEP, promise);
-          }
-      }).start();
+    String ssid, String passphrase, Promise promise) {
+    NetworkRequest networkRequest;
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      // API using Android Q+
+      // Build configuration
+      WifiNetworkSpecifier.Builder builder = new WifiNetworkSpecifier.Builder()
+        .setSsid(ssid);
+
+      if (!passphrase.equals("")) {
+        builder.setWpa2Passphrase(passphrase);
+      }
+
+      // Add configuration, connect and check
+      networkRequest = new NetworkRequest.Builder()
+        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+        .setNetworkSpecifier(builder.build())
+        .build();
+
+    } else {
+      // Legacy API
+      // Build configuration
+      WifiConfiguration configuration = new WifiConfiguration();
+      configuration.SSID = String.format("\"%s\"", ssid);
+
+      if (passphrase.equals("")) {
+        configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+      } else { // WPA/WPA2
+        configuration.preSharedKey = String.format("\"%s\"", passphrase);
+      }
+
+      // Add configuration
+      int networkId = wifiManager.addNetwork(configuration);
+      if (networkId == -1) {
+        promise.reject("not_configured", "Configuration for network failed");
+        return;
+      }
+
+      // Connect
+      wifiManager.disconnect();
+      boolean success = wifiManager.enableNetwork(networkId, true);
+      if (!success) {
+        promise.reject("not_configured", "Could not enable network");
+        return;
+      }
+      wifiManager.reconnect();
+
+      // Check
+      networkRequest = new NetworkRequest.Builder()
+        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+        .build();
+    }
+
+    if (mCallback != null) {
+      connectivityManager.unregisterNetworkCallback(mCallback);
+    }
+
+    mCallback = new ConnectivityManager.NetworkCallback() {
+      @Override
+      public void onAvailable(Network network) {
+        String currentSSID = getCurrentSSID();
+        if (ssid.equals(currentSSID)) {
+          promise.resolve(null);
+        }
+      }
+
+      @Override
+      public void onUnavailable() {
+        promise.reject("not_configured", "Cannot connect to network");
+      }
+    };
+    connectivityManager.requestNetwork(networkRequest, mCallback);
   }
 
-  /** Method called by the activity with the result of the permission request. */
+  @ReactMethod
+  public void disconnect(String ssid, Promise promise) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      // No need to remove the network in Android Q+
+    } else {
+      // Legacy API
+      List<WifiConfiguration> networks = wifiManager.getConfiguredNetworks();
+      String comparableSSID = String.format("\"%s\"", ssid);
+
+      // TODO network specifier version
+      if (networks != null) {
+        for (WifiConfiguration configuration : networks) {
+          if (configuration.SSID.equals(comparableSSID) && configuration.networkId != -1) {
+            // Remove the existing configuration for this network
+            wifiManager.removeNetwork(configuration.networkId);
+            wifiManager.saveConfiguration();
+
+            // TODO: reject if not found?
+          }
+        }
+      }
+    }
+
+    promise.resolve(null);
+  }
+
+  /**
+   * Method called by the activity with the result of the permission request.
+   */
   @Override
   public boolean onRequestPermissionsResult(
     int requestCode, String[] permissions, int[] grantResults) {
@@ -170,6 +256,28 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
         e);
       return false;
     }
+  }
+
+  private String getCurrentSSID() {
+    WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+    String ssid = wifiInfo.getSSID();
+
+    if (ssid == null || ssid.equalsIgnoreCase("<unknown ssid>")) {
+      NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+      if (networkInfo != null && networkInfo.isConnected()) {
+        ssid = networkInfo.getExtraInfo();
+      }
+    }
+
+    if (ssid != null && ssid.startsWith("\"") && ssid.endsWith("\"")) {
+      ssid = ssid.substring(1, ssid.length() - 1);
+    }
+
+    if (ssid != null && !ssid.isEmpty()) {
+      return ssid;
+    }
+
+    return null;
   }
 
   private PermissionAwareActivity getPermissionAwareActivity() {

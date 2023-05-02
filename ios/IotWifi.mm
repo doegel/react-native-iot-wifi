@@ -76,8 +76,6 @@ RCT_REMAP_METHOD(getSSID,
 
 RCT_EXPORT_METHOD(connect:(NSString*)ssid
                   withPassphrase:(NSString*)passphrase
-                  rememberNetwork:(BOOL)rememberNetwork
-                  isWEP:(BOOL)isWEP
                   withResolver:(RCTPromiseResolveBlock)resolve
                   withRejecter:(RCTPromiseRejectBlock)reject)
 {
@@ -91,10 +89,10 @@ RCT_EXPORT_METHOD(connect:(NSString*)ssid
             configuration = [[NEHotspotConfiguration alloc] initWithSSID:ssid];
         } else {
             // Connect with credentials
-            configuration = [[NEHotspotConfiguration alloc] initWithSSID:ssid passphrase:passphrase isWEP:isWEP];
+            configuration = [[NEHotspotConfiguration alloc] initWithSSID:ssid passphrase:passphrase isWEP:NO];
         }
 
-        configuration.joinOnce = !rememberNetwork;
+        configuration.joinOnce = true; // Will behave more like android if set
 
         [[NEHotspotConfigurationManager sharedManager] applyConfiguration:configuration completionHandler:^(NSError * _Nullable error) {
             if (error != nil) {
@@ -110,7 +108,6 @@ RCT_EXPORT_METHOD(connect:(NSString*)ssid
 }
 
 RCT_EXPORT_METHOD(disconnect:(NSString*)ssid
-                  forgetNetwork:(BOOL)forgetNetwork //Ignored
                   withResolver:(RCTPromiseResolveBlock)resolve
                   withRejecter:(RCTPromiseRejectBlock)reject)
 {
