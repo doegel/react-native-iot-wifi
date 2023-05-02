@@ -50,6 +50,7 @@
   },
   "homepage": "https://github.com/doegel/react-native-iot-wifi#readme",
   "publishConfig": {
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
