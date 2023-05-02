@@ -39,13 +39,11 @@ let available = await Wifi.isApiAvailable();
 let ssid = await Wifi.getSSID();
 
 try {
+  // without passphrase
   await Wifi.connect("wifi-ssid");
-} catch (error) {
-  console.log('error: ' + error);
-}
 
-try {
-  await Wifi.connectSecure("wifi-ssid", "passphrase");
+  // with passphrase (only WPA is supported)
+  await Wifi.connect("wifi-ssid", "passphrase");
 } catch (error) {
   console.log('error: ' + error);
 }
