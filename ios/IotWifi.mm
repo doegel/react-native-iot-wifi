@@ -48,7 +48,7 @@ RCT_REMAP_METHOD(getSSID,
                 reject(@"not_available", @"Cannot detect SSID, do you have location permission?", nil);
             } else {
                 NSString *ssid = [currentNetwork SSID];
-                resolve(@[ssid]);
+                resolve(ssid);
             }
         }];
     } else {
@@ -60,7 +60,7 @@ RCT_REMAP_METHOD(getSSID,
             info = (__bridge_transfer NSDictionary *)CNCopyCurrentNetworkInfo((__bridge CFStringRef)ifnam);
             if (info && [info count]) {
                 NSString *ssid = [info objectForKey: kSSID];
-                resolve(@[ssid]);
+                resolve(ssid);
             } else {
                 reject(@"not_available", @"Cannot detect SSID, do you have location permission?", nil);
             }
@@ -89,7 +89,7 @@ RCT_EXPORT_METHOD(connect:(NSString*)ssid
             if (error != nil) {
                 reject(@"not_configured", [error localizedDescription], error);
             } else {
-                resolve(@[[NSNull null]]);
+                resolve([NSNull null]);
             }
         }];
     } else {
@@ -106,7 +106,7 @@ RCT_EXPORT_METHOD(disconnect:(NSString*)ssid
             if (ssids != nil && [ssids indexOfObject:ssid] != NSNotFound) {
                 [[NEHotspotConfigurationManager sharedManager] removeConfigurationForSSID:ssid];
             }
-            resolve(@[[NSNull null]]);
+            resolve([NSNull null]);
 
             // TODO: reject if not found?
         }];
