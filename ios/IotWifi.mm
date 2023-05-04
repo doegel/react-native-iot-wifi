@@ -32,11 +32,9 @@ RCT_REMAP_METHOD(isApiAvailable,
 {
     BOOL available = NO;
 
-#if !TARGET_OS_SIMULATOR
     if (@available(iOS 11.0, *)) {
         available = YES;
     }
-#endif
 
     resolve(@(available));
 }
@@ -44,9 +42,6 @@ RCT_REMAP_METHOD(isApiAvailable,
 RCT_REMAP_METHOD(getSSID,
                  getSSIDWithResolver:(RCTPromiseResolveBlock)resolve withRejecter:(RCTPromiseRejectBlock)reject)
 {
-#if TARGET_OS_SIMULATOR
-    reject(@"not_available", @"Cannot run in a simulator", nil);
-#else
     if (@available(iOS 14.0, *)) {
         [NEHotspotNetwork fetchCurrentWithCompletionHandler:^(NEHotspotNetwork * _Nullable currentNetwork) {
             if (currentNetwork == nil) {
@@ -71,7 +66,6 @@ RCT_REMAP_METHOD(getSSID,
             }
         }
     }
-#endif
 }
 
 RCT_EXPORT_METHOD(connect:(NSString*)ssid
@@ -79,9 +73,6 @@ RCT_EXPORT_METHOD(connect:(NSString*)ssid
                   withResolver:(RCTPromiseResolveBlock)resolve
                   withRejecter:(RCTPromiseRejectBlock)reject)
 {
-#if TARGET_OS_SIMULATOR
-    reject(@"not_available", @"Cannot run in a simulator", nil);
-#else
     if (@available(iOS 11.0, *)) {
         NEHotspotConfiguration* configuration = nil;
         if ([passphrase length] == 0) {
@@ -104,16 +95,12 @@ RCT_EXPORT_METHOD(connect:(NSString*)ssid
     } else {
         reject(@"not_supported", @"Not supported in iOS<11.0", nil);
     }
-#endif
 }
 
 RCT_EXPORT_METHOD(disconnect:(NSString*)ssid
                   withResolver:(RCTPromiseResolveBlock)resolve
                   withRejecter:(RCTPromiseRejectBlock)reject)
 {
-#if TARGET_OS_SIMULATOR
-    reject(@"not_available", @"Cannot run in a simulator", nil);
-#else
     if (@available(iOS 11.0, *)) {
         [[NEHotspotConfigurationManager sharedManager] getConfiguredSSIDsWithCompletionHandler:^(NSArray<NSString *> *ssids) {
             if (ssids != nil && [ssids indexOfObject:ssid] != NSNotFound) {
@@ -126,7 +113,6 @@ RCT_EXPORT_METHOD(disconnect:(NSString*)ssid
     } else {
         reject(@"not_supported", @"Not supported in iOS<11.0", nil);
     }
-#endif
 }
 
  /** Method called by the delegate with the result of the permission request. */
