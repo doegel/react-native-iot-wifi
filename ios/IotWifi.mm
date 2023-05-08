@@ -42,30 +42,7 @@ RCT_REMAP_METHOD(isApiAvailable,
 RCT_REMAP_METHOD(getSSID,
                  getSSIDWithResolver:(RCTPromiseResolveBlock)resolve withRejecter:(RCTPromiseRejectBlock)reject)
 {
-    if (@available(iOS 14.0, *)) {
-        [NEHotspotNetwork fetchCurrentWithCompletionHandler:^(NEHotspotNetwork * _Nullable currentNetwork) {
-            if (currentNetwork == nil) {
-                reject(@"not_available", @"Cannot detect SSID, do you have location permission?", nil);
-            } else {
-                NSString *ssid = [currentNetwork SSID];
-                resolve(ssid);
-            }
-        }];
-    } else {
-        NSString *kSSID = (NSString*) kCNNetworkInfoKeySSID;
-
-        NSArray *ifs = (__bridge_transfer NSArray *)CNCopySupportedInterfaces();
-        NSDictionary *info;
-        for (NSString *ifnam in ifs) {
-            info = (__bridge_transfer NSDictionary *)CNCopyCurrentNetworkInfo((__bridge CFStringRef)ifnam);
-            if (info && [info count]) {
-                NSString *ssid = [info objectForKey: kSSID];
-                resolve(ssid);
-            } else {
-                reject(@"not_available", @"Cannot detect SSID, do you have location permission?", nil);
-            }
-        }
-    }
+    [self fetchSSIDWithResolver:resolve rejecter:reject];
 }
 
 RCT_EXPORT_METHOD(connect:(NSString*)ssid
@@ -89,7 +66,34 @@ RCT_EXPORT_METHOD(connect:(NSString*)ssid
             if (error != nil) {
                 reject(@"not_configured", [error localizedDescription], error);
             } else {
-                resolve([NSNull null]);
+                __block BOOL joined = NO;
+                // Wait until device joined the network.
+                for (int i = 1; i < 5; i++) { // Wait for 10s
+                    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                        // non-main thread.
+                        [NSThread sleepForTimeInterval:2.0f];
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            // main thread
+                            [self fetchSSIDWithResolver:^(id result) {
+                                if ([result isEqualToString:ssid]) {
+                                  // We joined successfully.
+                                  joined = YES;
+                                }
+                            } rejecter:reject];
+                        });
+                    });
+
+                    if (joined) {
+                        // If we joined exit the loop early.
+                        break;
+                    }
+                }
+
+                if (!joined) {
+                    reject(@"not_joined", @"Cannot join the configured network", nil);
+                } else {
+                    resolve([NSNull null]);
+                }
             }
         }];
     } else {
@@ -120,6 +124,34 @@ RCT_EXPORT_METHOD(disconnect:(NSString*)ssid
     if (status != kCLAuthorizationStatusNotDetermined) {
         [_locationManager setDelegate:nil];
         [self checkWithResolver:_resolve rejecter:_reject];
+    }
+}
+
+- (void)fetchSSIDWithResolver:(RCTPromiseResolveBlock)resolve
+                      rejecter:(RCTPromiseRejectBlock)reject {
+  if (@available(iOS 14.0, *)) {
+        [NEHotspotNetwork fetchCurrentWithCompletionHandler:^(NEHotspotNetwork * _Nullable currentNetwork) {
+            if (currentNetwork == nil) {
+                reject(@"not_available", @"Cannot detect SSID, do you have location permission?", nil);
+            } else {
+                NSString *ssid = [currentNetwork SSID];
+                resolve(ssid);
+            }
+        }];
+    } else {
+        NSString *kSSID = (NSString*) kCNNetworkInfoKeySSID;
+
+        NSArray *ifs = (__bridge_transfer NSArray *)CNCopySupportedInterfaces();
+        NSDictionary *info;
+        for (NSString *ifnam in ifs) {
+            info = (__bridge_transfer NSDictionary *)CNCopyCurrentNetworkInfo((__bridge CFStringRef)ifnam);
+            if (info && [info count]) {
+                NSString *ssid = [info objectForKey: kSSID];
+                resolve(ssid);
+            } else {
+                reject(@"not_available", @"Cannot detect SSID, do you have location permission?", nil);
+            }
+        }
     }
 }
 
