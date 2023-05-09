@@ -1,7 +1,10 @@
 import * as React from 'react';
 
 import { StyleSheet, View, Text } from 'react-native';
-import { hasPermission, requestPermission } from 'react-native-iot-wifi';
+import {
+  hasPermission,
+  requestPermission,
+} from '@doegel/react-native-iot-wifi';
 
 export default function App() {
   const [reqP, setReqP] = React.useState<boolean | undefined>();
@@ -24,8 +27,8 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Text>HasPer: {hasP ? 'YES' : 'NO'}</Text>
-      <Text>ReqPer: {reqP ? 'YES' : 'NO'}</Text>
+      <Text style={styles.text}>HasPer: {hasP ? 'YES' : 'NO'}</Text>
+      <Text style={styles.text}>ReqPer: {reqP ? 'YES' : 'NO'}</Text>
     </View>
   );
 }
@@ -40,5 +43,8 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     marginVertical: 20,
+  },
+  text: {
+    color: 'white',
   },
 });

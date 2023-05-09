@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "react-native-iot-wifi": ["./src/index"]
+      "@doegel/react-native-iot-wifi": ["./src/index"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
