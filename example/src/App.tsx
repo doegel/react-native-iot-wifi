@@ -19,6 +19,13 @@ export default function App() {
   const [ssid, setSsid] = React.useState<string>('PR0100100110');
   const [passphrase, setPassphrase] = React.useState<string>('Hq1ZIpHF');
 
+  const tryWebsocket = async () => {
+    const ws = new WebSocket('ws://192.168.0.10:8090/');
+    ws.onopen = () => console.warn('open');
+    ws.onclose = () => console.warn('close');
+    ws.onerror = (e) => console.warn(e.message);
+  };
+
   const getInfo = async () => {
     try {
       setLoading(true);
@@ -47,6 +54,7 @@ export default function App() {
       setLoading(true);
       await connect(ssid, passphrase);
       getInfo();
+      tryWebsocket();
     } catch (err: any) {
       setError(err.message);
     } finally {

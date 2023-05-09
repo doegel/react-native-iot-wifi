@@ -191,7 +191,7 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
         .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
         .build();
     }
-    waitForNetwork(ssid, true, promise);
+    waitForNetwork(ssid, promise);
     connectivityManager.requestNetwork(networkRequest, mCallback);
   }
 
@@ -199,7 +199,6 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
   public void disconnect(String ssid, Promise promise) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       // No need to remove the network in Android Q+
-      promise.reject("not_disconnected", "Can not remove network in Android Q+");
     } else {
       // Legacy API
       List<WifiConfiguration> networks = wifiManager.getConfiguredNetworks();
@@ -214,10 +213,12 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
           }
         }
       }
-      promise.resolve(null);
 
       // TODO: reject if not found?
     }
+
+    bindProcessToNetwork(null);
+    promise.resolve(null);
   }
 
   /**
@@ -239,6 +240,14 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
     }
   }
 
+  private void bindProcessToNetwork(final Network network) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      connectivityManager.bindProcessToNetwork(network);
+    } else {
+      ConnectivityManager.setProcessDefaultNetwork(network);
+    }
+  }
+
   private void waitForNetwork(String ssid, Promise promise) {
     if (mCallback != null) {
       connectivityManager.unregisterNetworkCallback(mCallback);
@@ -249,12 +258,14 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
       public void onAvailable(Network network) {
         String currentSSID = getCurrentSSID();
         if (ssid.equals(currentSSID)) {
+          bindProcessToNetwork(network);
           promise.resolve(null);
         }
       }
 
       @Override
       public void onUnavailable() {
+        bindProcessToNetwork(null);
         promise.reject("not_configured", "Cannot connect to network");
       }
     };
