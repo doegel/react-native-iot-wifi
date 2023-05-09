@@ -1,34 +1,96 @@
 import * as React from 'react';
 
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, Button, TextInput } from 'react-native';
 import {
   hasPermission,
   requestPermission,
+  isApiAvailable,
+  getSSID,
+  connect,
+  disconnect,
 } from '@doegel/react-native-iot-wifi';
 
 export default function App() {
-  const [reqP, setReqP] = React.useState<boolean | undefined>();
-  const [hasP, setHasP] = React.useState<boolean | undefined>();
+  const [available, setAvailable] = React.useState<boolean>(false);
+  const [permission, setPermission] = React.useState<boolean>(false);
+  const [network, setNetwork] = React.useState<string>('');
+  const [loading, setLoading] = React.useState<boolean>(false);
+  const [error, setError] = React.useState<string>('');
+  const [ssid, setSsid] = React.useState<string>('PR0100100110');
+  const [passphrase, setPassphrase] = React.useState<string>('Hq1ZIpHF');
 
-  const get = async () => {
+  const getInfo = async () => {
     try {
-      const hasPer = await hasPermission();
-      setHasP(hasPer);
-      const reqPer = await requestPermission();
-      setReqP(reqPer);
+      setLoading(true);
+      const isAvailable = await isApiAvailable();
+      setAvailable(isAvailable);
+
+      const getPermission = await requestPermission();
+      setPermission(getPermission || false);
+
+      const isPermitted = await hasPermission();
+      setPermission(isPermitted);
+
+      const currentSsid = await getSSID();
+      setNetwork(currentSsid);
+
+      setError('');
     } catch (err: any) {
       console.warn(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const connectNetwork = async () => {
+    try {
+      setLoading(true);
+      await connect(ssid, passphrase);
+      getInfo();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const disconnectNetwork = async () => {
+    try {
+      setLoading(true);
+      await disconnect(ssid);
+      getInfo();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   React.useEffect(() => {
-    get();
+    getInfo();
   }, []);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>HasPer: {hasP ? 'YES' : 'NO'}</Text>
-      <Text style={styles.text}>ReqPer: {reqP ? 'YES' : 'NO'}</Text>
+      <Text style={styles.text}>API available: {available ? 'YES' : 'NO'}</Text>
+      <Text style={styles.text}>Is permitted: {permission ? 'YES' : 'NO'}</Text>
+      <TextInput
+        style={styles.text}
+        placeholder="SSID"
+        defaultValue={ssid}
+        onChangeText={setSsid}
+      />
+      <TextInput
+        style={styles.text}
+        placeholder="Passphrase"
+        defaultValue={passphrase}
+        onChangeText={setPassphrase}
+      />
+      <Button title="Connect" onPress={connectNetwork} />
+      <Button title="Disconnect" onPress={disconnectNetwork} />
+      <Text style={styles.text}>SSID: {network}</Text>
+      {loading && <Text style={styles.text}>Busy...</Text>}
+      {error && <Text style={styles.text}>Error: {error}</Text>}
     </View>
   );
 }
@@ -39,12 +101,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  box: {
-    width: 60,
-    height: 60,
-    marginVertical: 20,
-  },
   text: {
+    width: '100%',
     color: 'white',
+    padding: 20,
   },
 });

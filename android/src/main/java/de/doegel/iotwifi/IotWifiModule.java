@@ -131,10 +131,10 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
   @ReactMethod
   public void getSSID(Promise promise) {
     String ssid = getCurrentSSID();
-    if (ssid != null) {
-      promise.resolve(ssid);
-    } else {
+    if (ssid == null || ssid.equalsIgnoreCase("<unknown ssid>")) {
       promise.reject("not_available", "Cannot detect SSID");
+    } else {
+      promise.resolve(ssid);
     }
   }
 
@@ -191,25 +191,7 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
         .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
         .build();
     }
-
-    if (mCallback != null) {
-      connectivityManager.unregisterNetworkCallback(mCallback);
-    }
-
-    mCallback = new ConnectivityManager.NetworkCallback() {
-      @Override
-      public void onAvailable(Network network) {
-        String currentSSID = getCurrentSSID();
-        if (ssid.equals(currentSSID)) {
-          promise.resolve(null);
-        }
-      }
-
-      @Override
-      public void onUnavailable() {
-        promise.reject("not_configured", "Cannot connect to network");
-      }
-    };
+    waitForNetwork(ssid, true, promise);
     connectivityManager.requestNetwork(networkRequest, mCallback);
   }
 
@@ -217,26 +199,25 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
   public void disconnect(String ssid, Promise promise) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       // No need to remove the network in Android Q+
+      promise.reject("not_disconnected", "Can not remove network in Android Q+");
     } else {
       // Legacy API
       List<WifiConfiguration> networks = wifiManager.getConfiguredNetworks();
       String comparableSSID = String.format("\"%s\"", ssid);
 
-      // TODO network specifier version
       if (networks != null) {
         for (WifiConfiguration configuration : networks) {
           if (configuration.SSID.equals(comparableSSID) && configuration.networkId != -1) {
             // Remove the existing configuration for this network
             wifiManager.removeNetwork(configuration.networkId);
             wifiManager.saveConfiguration();
-
-            // TODO: reject if not found?
           }
         }
       }
-    }
+      promise.resolve(null);
 
-    promise.resolve(null);
+      // TODO: reject if not found?
+    }
   }
 
   /**
@@ -256,6 +237,27 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
         e);
       return false;
     }
+  }
+
+  private void waitForNetwork(String ssid, Promise promise) {
+    if (mCallback != null) {
+      connectivityManager.unregisterNetworkCallback(mCallback);
+    }
+
+    mCallback = new ConnectivityManager.NetworkCallback() {
+      @Override
+      public void onAvailable(Network network) {
+        String currentSSID = getCurrentSSID();
+        if (ssid.equals(currentSSID)) {
+          promise.resolve(null);
+        }
+      }
+
+      @Override
+      public void onUnavailable() {
+        promise.reject("not_configured", "Cannot connect to network");
+      }
+    };
   }
 
   private String getCurrentSSID() {

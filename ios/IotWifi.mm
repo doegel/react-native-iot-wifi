@@ -10,7 +10,7 @@ RCT_REMAP_METHOD(requestPermission,
         resolve(@NO);
     }
     if ([CLLocationManager authorizationStatus] != kCLAuthorizationStatusNotDetermined) {
-        [self checkWithResolver:resolve rejecter:reject];
+        [self checkPermissionWithResolver:resolve withRejecter:reject];
     }
 
     _resolve = resolve;
@@ -24,7 +24,7 @@ RCT_REMAP_METHOD(requestPermission,
 RCT_REMAP_METHOD(hasPermission,
                  hasPermissionWithResolver:(RCTPromiseResolveBlock)resolve withRejecter:(RCTPromiseRejectBlock)reject)
 {
-    [self checkWithResolver:resolve rejecter:reject];
+    [self checkPermissionWithResolver:resolve withRejecter:reject];
 }
 
 RCT_REMAP_METHOD(isApiAvailable,
@@ -42,7 +42,7 @@ RCT_REMAP_METHOD(isApiAvailable,
 RCT_REMAP_METHOD(getSSID,
                  getSSIDWithResolver:(RCTPromiseResolveBlock)resolve withRejecter:(RCTPromiseRejectBlock)reject)
 {
-    [self fetchSSIDWithResolver:resolve rejecter:reject];
+    [self fetchSSIDWithResolver:resolve withRejecter:reject];
 }
 
 RCT_EXPORT_METHOD(connect:(NSString*)ssid
@@ -66,34 +66,8 @@ RCT_EXPORT_METHOD(connect:(NSString*)ssid
             if (error != nil) {
                 reject(@"not_configured", [error localizedDescription], error);
             } else {
-                __block BOOL joined = NO;
-                // Wait until device joined the network.
-                for (int i = 1; i < 5; i++) { // Wait for 10s
-                    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                        // non-main thread.
-                        [NSThread sleepForTimeInterval:2.0f];
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            // main thread
-                            [self fetchSSIDWithResolver:^(id result) {
-                                if ([result isEqualToString:ssid]) {
-                                  // We joined successfully.
-                                  joined = YES;
-                                }
-                            } rejecter:reject];
-                        });
-                    });
-
-                    if (joined) {
-                        // If we joined exit the loop early.
-                        break;
-                    }
-                }
-
-                if (!joined) {
-                    reject(@"not_joined", @"Cannot join the configured network", nil);
-                } else {
-                    resolve([NSNull null]);
-                }
+                // Wait for network to join.
+                [self waitForNetworkWithSSID:ssid withResolver:resolve withRejecter:reject];
             }
         }];
     } else {
@@ -123,12 +97,49 @@ RCT_EXPORT_METHOD(disconnect:(NSString*)ssid
 - (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
     if (status != kCLAuthorizationStatusNotDetermined) {
         [_locationManager setDelegate:nil];
-        [self checkWithResolver:_resolve rejecter:_reject];
+        [self checkPermissionWithResolver:_resolve withRejecter:_reject];
     }
 }
 
+- (void)waitForNetworkWithSSID:(NSString*)ssid
+                  withResolver:(RCTPromiseResolveBlock)resolve
+                  withRejecter:(RCTPromiseRejectBlock)reject {
+    __block BOOL joined = NO;
+    // Wait until device joined the network.
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        // non-main thread.
+        for (int i = 1; i < 5; i++) { // Wait for 10s
+            [NSThread sleepForTimeInterval:2.0f];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                // main thread
+                [self fetchSSIDWithResolver:^(id result) {
+                    if ([result isEqualToString:ssid]) {
+                        // We joined successfully.
+                        joined = YES;
+                    }
+                } withRejecter:^(NSString *code, NSString *message, NSError *error) {
+                    // We could not determine SSID.
+                    joined = NO;
+                }];
+            });
+            if (joined) {
+                // Break the loop if we are joined.
+                break;
+            }
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // main thread
+            if (joined) {
+                resolve([NSNull null]);
+            } else {
+                reject(@"not_joined", @"Cannot join the configured network", nil);
+            }
+        });
+    });
+}
+
 - (void)fetchSSIDWithResolver:(RCTPromiseResolveBlock)resolve
-                      rejecter:(RCTPromiseRejectBlock)reject {
+                 withRejecter:(RCTPromiseRejectBlock)reject {
   if (@available(iOS 14.0, *)) {
         [NEHotspotNetwork fetchCurrentWithCompletionHandler:^(NEHotspotNetwork * _Nullable currentNetwork) {
             if (currentNetwork == nil) {
@@ -155,8 +166,8 @@ RCT_EXPORT_METHOD(disconnect:(NSString*)ssid
     }
 }
 
-- (void)checkWithResolver:(RCTPromiseResolveBlock)resolve
-                 rejecter:(RCTPromiseRejectBlock)reject {
+- (void)checkPermissionWithResolver:(RCTPromiseResolveBlock)resolve
+                       withRejecter:(RCTPromiseRejectBlock)reject {
     if (![CLLocationManager locationServicesEnabled]) {
         // Location disabled
         resolve(@NO);

@@ -38,5 +38,5 @@ export function connect(ssid: string, passphrase: string = ''): Promise<void> {
 }
 
 export function disconnect(ssid: string): Promise<void> {
-  return IotWifi.removeSSID(ssid);
+  return IotWifi.disconnect(ssid);
 }
