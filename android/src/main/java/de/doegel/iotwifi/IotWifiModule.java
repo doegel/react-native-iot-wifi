@@ -62,7 +62,7 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
   @ReactMethod
   public void requestPermission(Promise promise) {
     Context context = getReactApplicationContext().getBaseContext();
-    String permission = Manifest.permission.ACCESS_FINE_LOCATION;
+    String permission = getPermissionIdentifier();
 
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
       promise.resolve(
@@ -108,7 +108,7 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
   @ReactMethod
   public void hasPermission(Promise promise) {
     Context context = getReactApplicationContext().getBaseContext();
-    String permission = Manifest.permission.ACCESS_FINE_LOCATION;
+    String permission = getPermissionIdentifier();
 
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
       promise.resolve(
@@ -116,9 +116,6 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
           == PackageManager.PERMISSION_GRANTED);
       return;
     }
-
-    // NOTE: Be aware of new permission introduced in Tiramisu (33)
-    // @link https://developer.android.com/guide/topics/connectivity/wifi-permissions
 
     promise.resolve(context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED);
   }
@@ -238,6 +235,18 @@ public class IotWifiModule extends ReactContextBaseJavaModule implements Permiss
         e);
       return false;
     }
+  }
+
+  private String getPermissionIdentifier() {
+    String permission;
+    if (false /* Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU */) {
+      // NOTE: Be aware of new permission introduced in Tiramisu (33)
+      // @link https://developer.android.com/guide/topics/connectivity/wifi-permissions
+      permission = Manifest.permission.NEARBY_WIFI_DEVICES;
+    } else {
+      permission = Manifest.permission.ACCESS_FINE_LOCATION;
+    }
+    return permission;
   }
 
   private void bindProcessToNetwork(final Network network) {
